@@ -133,4 +133,4 @@ A **Reset Demo** button is available in the site footer. This wipes all appointm
 
 ## MongoDB data directory
 
-The `mongodb-data/` folder is where `mongod` stores its data files when started with `npm run mongo:start`. This folder is git-ignored (only the `.gitkeep` placeholder is tracked). Do not delete `.gitkeep` or the folder will be excluded from the repository.
+MongoDB data files are stored locally in `mongodb-data/` and are git-ignored — they never get uploaded to the repository.
