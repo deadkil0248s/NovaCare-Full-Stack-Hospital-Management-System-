@@ -71,6 +71,18 @@ export const api = {
       method: "POST",
     });
   },
+  async sendOtp({ email, purpose }) {
+    return request("/auth/send-otp", {
+      body: JSON.stringify({ email, purpose }),
+      method: "POST",
+    });
+  },
+  async verifyOtp({ email, otp, purpose }) {
+    return request("/auth/verify-otp", {
+      body: JSON.stringify({ email, otp, purpose }),
+      method: "POST",
+    });
+  },
   async resetDemoData() {
     return request("/reset", {
       method: "POST",

@@ -187,14 +187,39 @@ export function AppProvider({ children }) {
     async (form) => {
       try {
         const result = await api.registerPatient(form);
-        setSessionUserId(result.user.id);
-        await refreshAppState();
+        // If email verification is pending, don't log the user in yet
+        if (result.ok && !result.awaitingVerification) {
+          setSessionUserId(result.user.id);
+          await refreshAppState();
+        }
         return result;
       } catch (error) {
         return {
           ok: false,
           error: asErrorMessage(error),
         };
+      }
+    },
+    [refreshAppState],
+  );
+
+  const sendOtp = useCallback(async ({ email, purpose }) => {
+    try {
+      return await api.sendOtp({ email, purpose });
+    } catch (error) {
+      return { ok: false, error: asErrorMessage(error) };
+    }
+  }, []);
+
+  const verifyOtp = useCallback(
+    async ({ email, otp, purpose }) => {
+      try {
+        const result = await api.verifyOtp({ email, otp, purpose });
+        setSessionUserId(result.user.id);
+        await refreshAppState();
+        return result;
+      } catch (error) {
+        return { ok: false, error: asErrorMessage(error) };
       }
     },
     [refreshAppState],
@@ -345,10 +370,12 @@ export function AppProvider({ children }) {
       registerPatient,
       resetDemoData,
       saveDoctorProfile,
+      sendOtp,
       submitContactMessage,
       updateAppointmentByDoctor,
       updateAppointmentByAdmin,
       users: appState.users,
+      verifyOtp,
     }),
     [
       appState.appointments,
@@ -365,9 +392,11 @@ export function AppProvider({ children }) {
       registerPatient,
       resetDemoData,
       saveDoctorProfile,
+      sendOtp,
       submitContactMessage,
       updateAppointmentByDoctor,
       updateAppointmentByAdmin,
+      verifyOtp,
     ],
   );
 

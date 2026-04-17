@@ -3,12 +3,14 @@ dotenv.config({ override: true });
 import { compare as comparePasswordHash } from "bcryptjs";
 import cors from "cors";
 import express from "express";
+import { randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeDb, getDb, getMongoConfig } from "./db.js";
 import { createSeedState } from "./seedData.js";
 import { getAIRecommendation, logConversation } from "./aiAssistant.js";
+import { sendOTPEmail } from "./emailService.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -38,6 +40,10 @@ if (existsSync(indexPath)) {
 
 function createId(prefix) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function generateOTP() {
+  return String(randomInt(100000, 999999));
 }
 
 function normalizeEmail(email) {
@@ -232,6 +238,7 @@ async function getCollections() {
     appointments: db.collection("appointments"),
     contactMessages: db.collection("contactMessages"),
     doctors: db.collection("doctors"),
+    otps: db.collection("otps"),
     users: db.collection("users"),
   };
 }
@@ -241,6 +248,8 @@ async function ensureSeedData() {
   const seed = createSeedState();
 
   await collections.users.createIndex({ email: 1 }, { unique: true });
+  await collections.otps.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+  await collections.otps.createIndex({ email: 1, purpose: 1 }, { unique: true });
 
   const specs = [
     ["users", seed.users],
@@ -480,11 +489,28 @@ app.post("/api/patients/register", async (request, response) => {
     email,
     password,
     phone: cleanedPhone,
+    emailVerified: false,
     createdAt: new Date().toISOString(),
   };
 
   await users.insertOne(newPatient);
-  response.status(201).json({ ok: true, user: stripMongoFields(newPatient) });
+
+  // Send verification OTP (best-effort — don't fail registration if email errors)
+  try {
+    const { otps } = await getCollections();
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await otps.replaceOne(
+      { email, purpose: "register" },
+      { email, purpose: "register", otp, expiresAt, createdAt: new Date().toISOString() },
+      { upsert: true },
+    );
+    await sendOTPEmail({ to: email, otp, purpose: "register" });
+  } catch (emailErr) {
+    console.warn("Failed to send verification OTP on register:", emailErr.message);
+  }
+
+  response.status(201).json({ ok: true, awaitingVerification: true, user: stripMongoFields(newPatient) });
 });
 
 app.post("/api/appointments", async (request, response) => {
@@ -807,6 +833,104 @@ app.post("/api/doctors/upsert", async (request, response) => {
       ? "Doctor profile updated successfully."
       : `Doctor profile created. Default password: ${doctorUser.password}`,
   });
+});
+
+app.post("/api/auth/send-otp", async (request, response) => {
+  const email = normalizeEmail(request.body.email);
+  const purpose = String(request.body.purpose ?? "");
+
+  if (!email || !["login", "register"].includes(purpose)) {
+    response.status(400).json({ error: "Valid email and purpose are required." });
+    return;
+  }
+
+  const { users, otps } = await getCollections();
+  const user = await users.findOne({ email });
+
+  if (!user) {
+    // Return ok to avoid exposing whether the email exists
+    response.json({ ok: true });
+    return;
+  }
+
+  if (purpose === "login" && !user.emailVerified) {
+    response.status(403).json({
+      error: "OTP login is not available for this account. Please verify your email first, or use your password to sign in.",
+    });
+    return;
+  }
+
+  if (purpose === "register" && user.emailVerified) {
+    response.status(400).json({
+      error: "This email is already verified. Please sign in instead.",
+    });
+    return;
+  }
+
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await otps.replaceOne(
+    { email, purpose },
+    { email, purpose, otp, expiresAt, createdAt: new Date().toISOString() },
+    { upsert: true },
+  );
+
+  try {
+    await sendOTPEmail({ to: email, otp, purpose });
+  } catch (emailErr) {
+    console.error("OTP email send failed:", emailErr.message);
+    response.status(500).json({ error: "Failed to send OTP email. Please try again shortly." });
+    return;
+  }
+
+  response.json({ ok: true });
+});
+
+app.post("/api/auth/verify-otp", async (request, response) => {
+  const email = normalizeEmail(request.body.email);
+  const otp = String(request.body.otp ?? "").trim();
+  const purpose = String(request.body.purpose ?? "");
+
+  if (!email || !otp || !["login", "register"].includes(purpose)) {
+    response.status(400).json({ error: "Email, OTP, and purpose are required." });
+    return;
+  }
+
+  const { users, otps } = await getCollections();
+  const otpDoc = await otps.findOne({ email, purpose });
+
+  if (!otpDoc) {
+    response.status(400).json({ error: "No active OTP found for this email. Please request a new one." });
+    return;
+  }
+
+  if (new Date() > new Date(otpDoc.expiresAt)) {
+    await otps.deleteOne({ email, purpose });
+    response.status(400).json({ error: "OTP has expired. Please request a new one." });
+    return;
+  }
+
+  if (otpDoc.otp !== otp) {
+    response.status(400).json({ error: "Incorrect OTP. Please check the code and try again." });
+    return;
+  }
+
+  // Valid — consume the OTP
+  await otps.deleteOne({ email, purpose });
+
+  const user = await users.findOne({ email });
+  if (!user) {
+    response.status(404).json({ error: "Account not found." });
+    return;
+  }
+
+  if (purpose === "register") {
+    await users.updateOne({ email }, { $set: { emailVerified: true } });
+    user.emailVerified = true;
+  }
+
+  response.json({ ok: true, user: stripMongoFields(user) });
 });
 
 app.post("/api/reset", async (_request, response) => {

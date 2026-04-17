@@ -1260,6 +1260,121 @@ button {
   color: white;
 }
 
+/* OTP / auth method sub-tabs */
+.auth-method-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+  padding: 0.35rem;
+  background: rgba(240, 247, 255, 0.7);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.auth-method-tab {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.auth-method-tab:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+}
+
+.auth-method-tab-active {
+  background: white;
+  color: var(--navy);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(13, 71, 161, 0.12);
+}
+
+/* OTP hint text */
+.auth-otp-hint {
+  font-size: 0.83rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Large centered OTP code input */
+.auth-otp-input {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-family: monospace;
+}
+
+/* Resend / back text-link button */
+.auth-resend-btn {
+  background: none;
+  border: none;
+  color: var(--teal);
+  font-size: 0.83rem;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  text-align: center;
+  width: 100%;
+  opacity: 0.85;
+  transition: opacity 140ms ease;
+}
+
+.auth-resend-btn:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.auth-resend-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  text-decoration: none;
+}
+
+/* Email verification banner */
+.auth-verify-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  background: linear-gradient(135deg, rgba(236, 253, 245, 0.9), rgba(209, 250, 229, 0.7));
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+
+.auth-verify-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.auth-verify-banner p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.auth-verify-banner strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--ink);
+  word-break: break-all;
+  margin: 0.15rem 0;
+}
+
+.auth-verify-note {
+  font-size: 0.8rem !important;
+  color: var(--ink-soft);
+  margin-top: 0.3rem !important;
+}
+
 .demo-credential code {
   margin-top: 0.4rem;
   padding: 0.4rem 0.7rem;
