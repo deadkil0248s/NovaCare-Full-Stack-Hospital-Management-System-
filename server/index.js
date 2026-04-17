@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config({ override: true });
 import { compare as comparePasswordHash } from "bcryptjs";
 import cors from "cors";
 import express from "express";
@@ -6,6 +8,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { closeDb, getDb, getMongoConfig } from "./db.js";
 import { createSeedState } from "./seedData.js";
+import { getAIRecommendation, logConversation } from "./aiAssistant.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
@@ -832,6 +835,45 @@ if (existsSync(indexPath)) {
 async function start() {
   await ensureSeedData();
   await repairLegacyData();
+
+  // POST /api/ai-assistant
+  app.post("/api/ai-assistant", async (req, res) => {
+    const { messages, sessionId } = req.body;
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "messages array is required" });
+    }
+
+    if (messages.length > 40) {
+      return res.status(400).json({ error: "Conversation too long — please start a new session" });
+    }
+
+    try {
+      const rawResponse = await getAIRecommendation(messages);
+
+      const recommendationMatch = rawResponse.match(/<recommendation>([\s\S]*?)<\/recommendation>/);
+      let recommendation = null;
+      const message = rawResponse.replace(/<recommendation>[\s\S]*?<\/recommendation>/, "").trim();
+
+      if (recommendationMatch) {
+        try {
+          recommendation = JSON.parse(recommendationMatch[1].trim());
+        } catch {
+          // malformed JSON in recommendation block — ignore it
+        }
+      }
+
+      if (recommendation && sessionId) {
+        await logConversation({ sessionId, messages, recommendation });
+      }
+
+      return res.json({ message, recommendation });
+    } catch (err) {
+      console.error("AI assistant error:", err.message);
+      const status = err.status === 429 ? 429 : 503;
+      return res.status(status).json({ error: err.message ?? "AI assistant is temporarily unavailable. Please try again." });
+    }
+  });
 
   app.listen(port, () => {
     console.log(`MediZyra API listening on http://127.0.0.1:${port}`);

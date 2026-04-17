@@ -12,8 +12,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1031.0",
+    "@aws-sdk/client-dynamodb": "^3.1031.0",
+    "@aws-sdk/lib-dynamodb": "^3.1031.0",
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongodb": "^7.1.1",
     "react": "^19.2.4",

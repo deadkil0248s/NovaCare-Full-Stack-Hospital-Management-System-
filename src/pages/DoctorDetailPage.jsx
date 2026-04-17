@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { DetailRow, DoctorIdentity, SectionHeading, StatusBadge } from "../components/Shared";
 import { useAppContext } from "../context/useAppContext";
 import { formatCurrency } from "../lib/appointments";
@@ -8,6 +8,8 @@ import NotFoundPage from "./NotFoundPage";
 export default function DoctorDetailPage() {
   const { doctorId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const aiPrefill = location.state?.aiPrefill ?? null;
   const { bookAppointment, currentUser, doctors } = useAppContext();
   const doctor = doctors.find((item) => item.id === doctorId);
 
@@ -15,12 +17,13 @@ export default function DoctorDetailPage() {
   const [form, setForm] = useState(() => ({
     selectedDate: defaultSchedule?.date ?? "",
     selectedSlot: defaultSchedule?.slots?.[0] ?? "",
-    consultationMode: "In-clinic",
-    priority: "Routine",
+    consultationMode: aiPrefill?.consultMode ?? "In-clinic",
+    priority: aiPrefill?.priority ?? "Routine",
     phone: currentUser?.phone ?? "",
-    reason: "",
-    symptoms: "",
+    reason: aiPrefill?.reason ?? "",
+    symptoms: aiPrefill?.symptoms ?? "",
   }));
+  const [showPrefillBanner, setShowPrefillBanner] = useState(!!aiPrefill);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -129,6 +132,20 @@ export default function DoctorDetailPage() {
             title="Request care slot"
             subtitle="This version uses a triage request flow, so admin review happens before the doctor workspace sees the visit."
           />
+
+          {showPrefillBanner && (
+            <div className="ai-prefill-banner">
+              <span className="ai-prefill-icon">✦</span>
+              <span>Form pre-filled by Health Assistant based on your symptoms.</span>
+              <button
+                className="ai-prefill-dismiss"
+                type="button"
+                onClick={() => setShowPrefillBanner(false)}
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           {currentUser?.role !== "patient" ? (
             <div className="callout">

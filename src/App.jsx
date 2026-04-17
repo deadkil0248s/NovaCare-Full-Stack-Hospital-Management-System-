@@ -1,7 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { AppProvider } from "./context/AppContext";
+import "./App.css";
 import { SiteFooter, SiteHeader } from "./components/SiteChrome";
+import AIAssistant from "./components/AIAssistant";
 import HomePage from "./pages/HomePage";
 import DoctorsPage from "./pages/DoctorsPage";
 import DoctorDetailPage from "./pages/DoctorDetailPage";
@@ -71,6 +73,7 @@ function AppShell() {
     <div className="site-shell">
       <ScrollToTop />
       <ViewportReveal />
+      <AIAssistant />
       <SiteHeader />
       <main className="site-main">
         <div className="route-shell" key={location.pathname}>
