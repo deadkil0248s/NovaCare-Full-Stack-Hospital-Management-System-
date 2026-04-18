@@ -2,7 +2,7 @@
 
 A full-stack hospital management system built with the MERN stack (MongoDB, Express, React, Node.js), deployed on AWS with an integrated AI health assistant powered by AWS Bedrock (DeepSeek).
 
-🌐 **Live Demo:** https://d1dshgtq2d97x.cloudfront.net
+🌐 **Live Demo:** https://www.nova-care.xyz/
 
 ---
 
